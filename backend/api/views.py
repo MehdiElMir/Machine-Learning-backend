@@ -1,24 +1,31 @@
 from django.shortcuts import render
-
-# Create your views here.
-
 import pandas as pd
 from django.http import JsonResponse
+import json
 
 def process_csv(request):
-    # Assuming 'file' is the key for the uploaded CSV file in the request
     uploaded_file = request.FILES['file']
-    
-    # Read the CSV file into a DataFrame
     df = pd.read_csv(uploaded_file)
-    number = 20
-    # Perform data analysis on df (e.g., machine learning techniques)
-    # Example:
-    #processed_data = df.mean()  # Just an example, replace with your actual processing
+    imputation_method = request.POST.get('imputation_method','mode')
     
-    # Convert DataFrame to a list of dictionaries
+    missing_percentage = (df.isnull().sum() / df.shape[0] * 100).to_dict()      
+    total_missing_percentage = sum(missing_percentage.values()) 
+    
     processed_data_json = df.reset_index().to_dict(orient='records')
+    df_imputed = impute_missing_values(df, method=imputation_method)
     
-    # Return processed data as JSON response
     return JsonResponse({'processed_data': processed_data_json,
-                         'missing_values': number})
+                         'missing_percentage': missing_percentage,
+                         'total_missing_percentage': total_missing_percentage,
+                         'imputed_dataset': df_imputed.to_dict(orient='records')
+                         })
+
+
+def impute_missing_values(df, method='mode'):
+    if method == 'mode':
+        return df.fillna(df.mode().iloc[0])
+    elif method == 'median':
+        return df.fillna(df.median())
+    elif method == 'mean':
+        return df.fillna(df.mean())
+    
