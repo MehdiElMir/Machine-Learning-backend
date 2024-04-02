@@ -6,6 +6,9 @@ import json
 def process_csv(request):
     uploaded_file = request.FILES['file']
     df = pd.read_csv(uploaded_file)
+    
+    num_rows, num_columns = df.shape
+    
     imputation_method = request.POST.get('imputation_method','mode')
     
     missing_percentage = (df.isnull().sum() / df.shape[0] * 100).to_dict()      
@@ -15,9 +18,11 @@ def process_csv(request):
     df_imputed = impute_missing_values(df, method=imputation_method)
     
     return JsonResponse({'processed_data': processed_data_json,
+                         'imputed_dataset': df_imputed.to_dict(orient='records'),
                          'missing_percentage': missing_percentage,
                          'total_missing_percentage': total_missing_percentage,
-                         'imputed_dataset': df_imputed.to_dict(orient='records')
+                          'num_rows': num_rows,
+                         'num_columns': num_columns
                          })
 
 
