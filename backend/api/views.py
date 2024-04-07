@@ -14,11 +14,12 @@ def process_csv(request):
     missing_percentage = (df.isnull().sum() / df.shape[0] * 100).to_dict()      
     total_missing_percentage = sum(missing_percentage.values()) 
     
-    processed_data_json = df.reset_index().to_dict(orient='records')
+    json_str = df.to_json(orient='records')
+    json_obj = json.loads(json_str)
     df_imputed = impute_missing_values(df, method=imputation_method)
     
-    return JsonResponse({'processed_data': processed_data_json,
-                         'imputed_dataset': df_imputed.to_dict(orient='records'),
+    return JsonResponse({'dataset': json_obj,
+                         #'imputed_dataset': df_imputed.to_dict(orient='records'),
                          'missing_percentage': missing_percentage,
                          'total_missing_percentage': total_missing_percentage,
                           'num_rows': num_rows,
