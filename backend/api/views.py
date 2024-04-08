@@ -46,3 +46,30 @@ def supp_col(request):
     return JsonResponse({'dataset': json_obj
                          })
     
+def delete_selected_columns(request):
+    if request.method == 'POST':
+
+        # Load request body JSON
+        body_unicode = request.body.decode('utf-8')
+        body_data = json.loads(body_unicode)
+
+        # Access dataset and columns_to_delete from the request body
+        dataset = body_data.get('dataset', [])
+        columns_to_delete = body_data.get('columns_to_delete', [])
+
+        # Convert dataset to a pandas DataFrame
+        df = pd.DataFrame(dataset)
+
+        # Remove specified columns
+        df.drop(columns=columns_to_delete, inplace=True, errors='ignore')
+
+        # Convert DataFrame back to a list of dictionaries
+        json_str = df.to_json(orient='records')
+        json_obj = json.loads(json_str)
+
+        # Return processed data as JSON response
+        return JsonResponse({'dataset': json_obj})
+
+    else:
+        # Return error response for methods other than POST
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
