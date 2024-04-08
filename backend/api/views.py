@@ -25,8 +25,7 @@ def process_csv(request):
                           'num_rows': num_rows,
                          'num_columns': num_columns
                          })
-
-
+    
 def impute_missing_values(df, method='mode'):
     if method == 'mode':
         return df.fillna(df.mode().iloc[0])
@@ -34,4 +33,16 @@ def impute_missing_values(df, method='mode'):
         return df.fillna(df.median())
     elif method == 'mean':
         return df.fillna(df.mean())
+    
+#Suppression des colonnes des missing values 
+    
+def supp_col(request):
+    uploaded_file = request.FILES['file']
+    df = pd.read_csv(uploaded_file)
+    df_supp =  df.dropna() 
+    df_supp = df_supp.to_json(orient='records')
+    json_obj = json.loads(df_supp)
+    
+    return JsonResponse({'dataset': json_obj
+                         })
     
