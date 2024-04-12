@@ -1,5 +1,10 @@
 from django.shortcuts import render
 import pandas as pd
+import seaborn as sns
+import base64
+import io
+import base64
+import matplotlib.pyplot as plt
 from django.http import JsonResponse
 import json
 
@@ -94,5 +99,34 @@ def imputate_selected_column(request):
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
     
+#linear_regression    
+def linear_regression(request):
+     if request.method == 'POST':
+        body_unicode = request.body.decode('utf-8')
+        body_data = json.loads(body_unicode)
+
+        dataset = body_data.get('dataset', [])
+        selected_columns = body_data.get('selected_columns', [])
+        target = body_data.get('target', '')
+
+        df = pd.DataFrame(dataset)
+
+        # Create the pairplot
+        plot = sns.pairplot(df, x_vars=selected_columns, y_vars=target, height=7, aspect=0.7,
+                            kind='reg', plot_kws={'ci': None, 'line_kws': {'color': 'red'}})
+
+        # Save the pairplot to a BytesIO buffer
+        buffer = io.BytesIO()
+        plot.savefig(buffer, format='png')
+        buffer.seek(0)
+
+        # Encode the image as base64
+        encoded_img = base64.b64encode(buffer.read()).decode('utf-8')
+
+        return JsonResponse({'encoded_img': encoded_img})
+
+     else:
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        
 
 
