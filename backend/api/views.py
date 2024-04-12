@@ -111,16 +111,13 @@ def linear_regression(request):
 
         df = pd.DataFrame(dataset)
 
-        # Create the pairplot
         plot = sns.pairplot(df, x_vars=selected_columns, y_vars=target, height=7, aspect=0.7,
                             kind='reg', plot_kws={'ci': None, 'line_kws': {'color': 'red'}})
 
-        # Save the pairplot to a BytesIO buffer
         buffer = io.BytesIO()
         plot.savefig(buffer, format='png')
         buffer.seek(0)
 
-        # Encode the image as base64
         encoded_img = base64.b64encode(buffer.read()).decode('utf-8')
 
         return JsonResponse({'encoded_img': encoded_img})
