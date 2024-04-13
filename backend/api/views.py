@@ -6,6 +6,7 @@ import io
 import base64
 import matplotlib.pyplot as plt
 from django.http import JsonResponse
+import plotly.express as px
 import json
 
 def process_csv(request):
@@ -26,7 +27,7 @@ def process_csv(request):
                          'num_columns': num_columns
                          })
         
-#Suppression des colonnes des missing values 
+#Suppression des lignes des missing values 
 def delete_missing_row(request):
     if request.method == 'POST':
         try:
@@ -163,3 +164,15 @@ def load_state(request):
      else:
          return JsonResponse({'error': 'Method not allowed'}, status=405)
 
+
+def generate_plot_data(request):
+    df = px.data.tips()
+    fig = px.scatter(
+        df, x='total_bill', y='tip', opacity=0.65,
+        trendline='ols', trendline_color_override='darkblue'
+    )
+
+    # Convert the Plotly figure to JSON
+    plot_data = fig.to_json()
+
+    return JsonResponse({'plot_data': plot_data})
