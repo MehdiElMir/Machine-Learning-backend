@@ -137,5 +137,29 @@ def linear_regression(request):
      else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
         
+def save_state(request):
+    
+    if request.method == 'POST':
+        body_unicode = request.body.decode('utf-8')
+        body_data = json.loads(body_unicode)
+        
+        selected_columns = body_data.get('selected_columns', [])
+        
+        # Enregistrement des colonnes sélectionnées dans les cookies
+        response = JsonResponse({'message': 'État enregistré avec succès'})
+        response.set_cookie('selected_columns', json.dumps(selected_columns))
+        
+        return response
+    else:
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
 
+def load_state(request):
+     if request.method == 'GET':
+         
+         # Récupération des colonnes sélectionnées à partir des cookies
+         selected_columns = json.loads(request.COOKIES.get('selected_columns', '[]'))
+        
+         return JsonResponse({'selected_columns': selected_columns})
+     else:
+         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
