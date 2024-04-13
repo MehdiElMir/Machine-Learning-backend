@@ -42,7 +42,8 @@ def delete_missing_row(request):
             json_obj = json.loads(json_str)
             
             num_rows, num_columns = df_supp.shape    
-            missing_percentage = (df_supp.isnull().sum() / df_supp.shape[0] * 100).to_dict()      
+            missing_percentage = (df_supp.isnull().sum() / df_supp.shape[0] * 100).to_dict()  
+            print(missing_percentage)    
             total_missing_percentage = sum(missing_percentage.values()) 
             
         except Exception as e:
