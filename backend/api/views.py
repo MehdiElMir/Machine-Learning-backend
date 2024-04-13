@@ -17,13 +17,16 @@ def process_csv(request):
     missing_percentage = (df.isnull().sum() / df.shape[0] * 100).to_dict()      
     total_missing_percentage = sum(missing_percentage.values()) 
     
+    mean_values = df.mean().to_dict()
+    
     json_str = df.to_json(orient='records')
     json_obj = json.loads(json_str)
     
     return JsonResponse({'dataset': json_obj,
                          'missing_percentage': missing_percentage,
                          'total_missing_percentage': total_missing_percentage,
-                          'num_rows': num_rows,
+                         'num_rows': num_rows,
+                         'mean_values': mean_values,
                          'num_columns': num_columns
                          })
         
