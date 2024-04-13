@@ -169,13 +169,15 @@ def load_state(request):
 
 
 def generate_plot_data(request):
-    df = px.data.tips()
-    fig = px.scatter(
-        df, x='total_bill', y='tip', opacity=0.65,
-        trendline='ols', trendline_color_override='darkblue'
-    )
+    if request.method == 'GET':
+        df = px.data.tips()
+        fig = px.scatter(
+            df, x='total_bill', y='tip', opacity=0.65,
+            trendline='ols', trendline_color_override='darkblue'
+        )
 
-    # Convert the Plotly figure to JSON
-    plot_data = fig.to_json()
+        # Convert the Plotly figure to JSON
+        plot_data = fig.to_json()
+        json_obj = json.loads(plot_data)
 
-    return JsonResponse({'plot_data': plot_data})
+    return JsonResponse({'plot_data': json_obj})

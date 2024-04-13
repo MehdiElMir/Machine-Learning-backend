@@ -9,5 +9,5 @@ urlpatterns = [
     path('linear_regression/', views.linear_regression, name='linear_regression'),
     path('save_state/', views.save_state, name='save_state'),
     path('load_state/', views.load_state, name='load_state'),
-    path('generate_plot_data/', views.generate_plot_data, name='load_state'),
+    path('generate_plot_data/', views.generate_plot_data, name='generate_plot_data'),
 ]
