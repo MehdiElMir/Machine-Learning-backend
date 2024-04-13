@@ -35,11 +35,22 @@ def delete_missing_row(request):
             dataset = body_data.get('dataset', [])
             df = pd.DataFrame(dataset)
             df_supp = df.dropna() 
-            json_obj = df_supp.to_dict(orient='records')
+            json_str = df_supp.to_json(orient='records')
+            json_obj = json.loads(json_str)
+            
+            num_rows, num_columns = df_supp.shape    
+            missing_percentage = (df_supp.isnull().sum() / df_supp.shape[0] * 100).to_dict()      
+            total_missing_percentage = sum(missing_percentage.values()) 
+            
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
 
-        return JsonResponse({'dataset': json_obj})
+        return JsonResponse({'dataset': json_obj,
+                         'missing_percentage': missing_percentage,
+                         'total_missing_percentage': total_missing_percentage,
+                          'num_rows': num_rows,
+                         'num_columns': num_columns
+                         })
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
                          
