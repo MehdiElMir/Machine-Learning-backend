@@ -57,8 +57,7 @@ def delete_missing_row(request):
                          'num_columns': num_columns
                          })
     else:
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
-                         
+        return JsonResponse({'error': 'Method not allowed'}, status=405) 
     
 #Suppression des colonnes
 def delete_selected_columns(request):
@@ -73,13 +72,18 @@ def delete_selected_columns(request):
         df = pd.DataFrame(dataset)
 
         df.drop(columns=columns_to_delete, inplace=True, errors='ignore')
-        columns = list(df.columns)
-        columns=json.dumps(columns)
-
+        num_rows, num_columns = df.shape    
+        missing_percentage = (df.isnull().sum() / df.shape[0] * 100).to_dict()  
+        total_missing_percentage = sum(missing_percentage.values()) 
+        
         json_str = df.to_json(orient='records')
         json_obj = json.loads(json_str)
         return JsonResponse({'dataset': json_obj,
-                             'columns':columns})
+                            'missing_percentage': missing_percentage,
+                            'total_missing_percentage': total_missing_percentage,
+                            'num_rows': num_rows,
+                            'num_columns': num_columns
+                            })
     else:
        
         return JsonResponse({'error': 'Method not allowed'}, status=405)
