@@ -14,6 +14,10 @@ import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
 import plotly.graph_objects as go
 from sklearn.svm import SVR
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LassoCV
 
 def process_csv(request):
     uploaded_file = request.FILES['file']
@@ -277,4 +281,129 @@ def regression_linear_3D(request):
                    
 
     return JsonResponse({'plot_data': json_obj})
+
+# def cross_validation(request):
+#     if request.method == 'POST':
+#         body_unicode = request.body.decode('utf-8')
+#         body_data = json.loads(body_unicode)
+        
+#         dataset = body_data.get('dataset', [])
+#         features = body_data.get('features', [])
+#         target = body_data.get('target','')
+#         df = pd.DataFrame(dataset)
+        
+    
+#         N_FOLD = 6
+
+#         # preprocess the data
+#         X = df.drop(columns=features)
+#         categorical_features =df.select_dtypes(exclude=["number","bool_","object_"])
+#         X = pd.get_dummies(X, categorical_features)
+#         y = df[target]
+
+#         # Normalize the data
+#         scaler = StandardScaler()
+#         X_scaled = scaler.fit_transform(X)
+
+#         # Train model to predict life expectancy
+#         model = LassoCV(cv=N_FOLD)
+#         model.fit(X_scaled, y)
+#         mean_alphas = model.mse_path_.mean(axis=-1)
+
+#         fig = go.Figure([
+#             go.Scatter(
+#                 x=model.alphas_, y=model.mse_path_[:, i],
+#                 name=f"Fold: {i+1}", opacity=.5, line=dict(dash='dash'),
+#                 hovertemplate="alpha: %{x} <br>MSE: %{y}"
+#             )
+#             for i in range(N_FOLD)
+#         ])
+#         fig.add_traces(go.Scatter(
+#             x=model.alphas_, y=mean_alphas,
+#             name='Mean', line=dict(color='black', width=3),
+#             hovertemplate="alpha: %{x} <br>MSE: %{y}",
+#         ))
+
+#         fig.add_shape(
+#             type="line", line=dict(dash='dash'),
+#             x0=model.alpha_, y0=0,
+#             x1=model.alpha_, y1=1,
+#             yref='paper'
+#         )
+
+#         fig.update_layout(
+#             xaxis_title='alpha',
+#             xaxis_type="log",
+#             yaxis_title="Mean Square Error (MSE)"
+#         )
+        
+#         plot_data = fig.to_json()
+#         json_obj = json.loads(plot_data) 
+                   
+
+#     return JsonResponse({'plot_data': json_obj})
+
+
+def cross_validation(request):
+    if request.method == 'POST':
+        body_unicode = request.body.decode('utf-8')
+        body_data = json.loads(body_unicode)
+        
+        dataset = body_data.get('dataset', [])
+        features = body_data.get('features', [])
+        target = body_data.get('target','')
+        df = pd.DataFrame(dataset)
+        
+        N_FOLD = 6
+
+        # Preprocess the data
+        X = df.drop(columns=features)
+        categorical_features = X.select_dtypes(include=["object"]).columns
+        X = pd.get_dummies(X, columns=categorical_features)
+        y = df[target]
+
+        # Normalize the data
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+
+        # Train model to predict target variable
+        model = LassoCV(cv=N_FOLD)
+        model.fit(X_scaled, y)
+        mean_alphas = model.mse_path_.mean(axis=-1)
+
+        # Create Plotly figure
+        fig = go.Figure([
+            go.Scatter(
+                x=model.alphas_, y=model.mse_path_[:, i],
+                name=f"Fold: {i+1}", opacity=.5, line=dict(dash='dash'),
+                hovertemplate="alpha: %{x} <br>MSE: %{y}"
+            )
+            for i in range(N_FOLD)
+        ])
+        fig.add_traces(go.Scatter(
+            x=model.alphas_, y=mean_alphas,
+            name='Mean', line=dict(color='black', width=3),
+            hovertemplate="alpha: %{x} <br>MSE: %{y}",
+        ))
+
+        fig.add_shape(
+            type="line", line=dict(dash='dash'),
+            x0=model.alpha_, y0=0,
+            x1=model.alpha_, y1=1,
+            yref='paper'
+        )
+
+        fig.update_layout(
+            xaxis_title='alpha',
+            xaxis_type="log",
+            yaxis_title="Mean Square Error (MSE)"
+        )
+        
+        plot_data = fig.to_json()
+        json_obj = json.loads(plot_data) 
+
+        return JsonResponse({'plot_data': json_obj})
+
+    return JsonResponse({'error': 'Only POST requests are supported.'})
+
 
