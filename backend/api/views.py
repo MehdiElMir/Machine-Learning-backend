@@ -8,6 +8,10 @@ import matplotlib.pyplot as plt
 from django.http import JsonResponse
 import plotly.express as px
 import json
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+from sklearn.linear_model import LinearRegression
 
 def process_csv(request):
     uploaded_file = request.FILES['file']
@@ -183,5 +187,33 @@ def generate_plot_data(request):
         # Convert the Plotly figure to JSON
         plot_data = fig.to_json()
         json_obj = json.loads(plot_data)
+
+    return JsonResponse({'plot_data': json_obj})
+
+def regression_linear_sckitlearn(request):
+    if request.method == 'POST':
+        body_unicode = request.body.decode('utf-8')
+        body_data = json.loads(body_unicode)
+        
+        dataset = body_data.get('dataset', [])
+        selected_x = body_data.get('selected_x','')    
+        selected_y = body_data.get('selected_y','') 
+        
+        df = pd.DataFrame(dataset)
+          
+        X = df[selected_x].values.reshape(-1, 1)
+        
+        model = LinearRegression()
+        model.fit(X, df[selected_y])
+
+        x_range = np.linspace(X.min(), X.max(), 100)
+        y_range = model.predict(x_range.reshape(-1, 1))
+         
+        fig = px.scatter(df, x = selected_x, y = selected_y, opacity=0.65)
+        fig.add_traces(go.Scatter(x=x_range, y=y_range, name='Regression Fit'))
+        
+        # Convert the Plotly figure to JSON
+        plot_data = fig.to_json()
+        json_obj = json.loads(plot_data)     
 
     return JsonResponse({'plot_data': json_obj})
