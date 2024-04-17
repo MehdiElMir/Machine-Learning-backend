@@ -11,5 +11,6 @@ urlpatterns = [
     path('load_state/', views.load_state, name='load_state'),
     path('generate_plot_data/', views.generate_plot_data, name='generate_plot_data'),
     path('regression_linear_sckitlearn/', views.regression_linear_sckitlearn, name='regression_linear_sckitlearn'),
-   
+    path('regression_linear_3D/', views.regression_linear_3D, name='regression_linear_3D'),
+
 ]

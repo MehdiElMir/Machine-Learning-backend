@@ -12,6 +12,8 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
+import plotly.graph_objects as go
+from sklearn.svm import SVR
 
 def process_csv(request):
     uploaded_file = request.FILES['file']
@@ -217,3 +219,48 @@ def regression_linear_sckitlearn(request):
         json_obj = json.loads(plot_data)     
 
     return JsonResponse({'plot_data': json_obj})
+
+
+def regression_linear_3D(request):
+    if request.method == 'POST':
+        body_unicode = request.body.decode('utf-8')
+        body_data = json.loads(body_unicode)
+        
+        dataset = body_data.get('dataset', [])
+        selected_y= body_data.get('selected_y','')
+        selected_x1= body_data.get('selected_x1','')
+        selected_x2= body_data.get('selected_x2','') 
+        df = pd.DataFrame(dataset)
+   
+        mesh_size = .02
+        margin = 0
+            
+        X = df[[selected_x1, selected_x2]]
+        y = df[selected_y]
+
+        # Condition the model on sepal width and length, predict the petal width
+        model = SVR(C=1.)
+        model.fit(X, y)
+
+        # Create a mesh grid on which we will run our model
+        x_min, x_max = X[selected_x1].min() - margin, X[selected_x1].max() + margin
+        y_min, y_max = X[selected_x2].min() - margin, X[selected_x2].max() + margin
+        xrange = np.arange(x_min, x_max, mesh_size)
+        yrange = np.arange(y_min, y_max, mesh_size)
+        xx, yy = np.meshgrid(xrange, yrange)
+
+        # Run model
+        pred = model.predict(np.c_[xx.ravel(), yy.ravel()])
+        pred = pred.reshape(xx.shape)
+
+        # Generate the plot
+        fig = px.scatter_3d(df, x=selected_x1, y=selected_x2, z=selected_y)
+        fig.update_traces(marker=dict(size=5))
+        fig.add_traces(go.Surface(x=xrange, y=yrange, z=pred, name='pred_surface'))
+    
+        plot_data = fig.to_json()
+        json_obj = json.loads(plot_data) 
+                   
+
+    return JsonResponse({'plot_data': json_obj})
+
