@@ -98,29 +98,43 @@ def delete_selected_columns(request):
 def imputate_selected_column(request):
     if request.method == 'POST':
         
-        body_unicode = request.body.decode('utf-8')
-        body_data = json.loads(body_unicode)
-        
-        dataset = body_data.get('dataset', [])
-        selected_columns = body_data.get('selected_columns', [])
-        option = body_data.get('option','')    
-        df = pd.DataFrame(dataset)
-        
-        if option == 'mode':
-            imputated_col = df[selected_columns].fillna(df[selected_columns].mode().iloc[0])
-            df[selected_columns] = imputated_col
+        try:
+            body_unicode = request.body.decode('utf-8')
+            body_data = json.loads(body_unicode)
             
-        elif option == 'median':
-            imputated_col = df[selected_columns].fillna(df[selected_columns].median())
-            df[selected_columns] = imputated_col
+            dataset = body_data.get('dataset', [])
+            selected_columns = body_data.get('selected_columns', [])
+            option = body_data.get('option','')    
+            df = pd.DataFrame(dataset)
+            
+            if option == 'Mode':
+                imputated_col = df[selected_columns].fillna(df[selected_columns].mode().iloc[0])
+                df[selected_columns] = imputated_col
+                
+            elif option == 'Median':
+                imputated_col = df[selected_columns].fillna(df[selected_columns].median())
+                df[selected_columns] = imputated_col
 
-        elif option == 'mean':
-            imputated_col = df[selected_columns].fillna(df[selected_columns].mean())
-            df[selected_columns] = imputated_col
-    
-        json_str = df.to_json(orient='records')
-        json_obj = json.loads(json_str)
-        return JsonResponse({'dataset': json_obj})
+            elif option == 'Mean':
+                imputated_col = df[selected_columns].fillna(df[selected_columns].mean())
+                df[selected_columns] = imputated_col
+        
+            json_str = df.to_json(orient='records')
+            json_obj = json.loads(json_str)
+            num_rows, num_columns = df.shape    
+            missing_percentage = (df.isnull().sum() / df.shape[0] * 100).to_dict()  
+            total_missing_percentage = sum(missing_percentage.values()) 
+            
+            json_str = df.to_json(orient='records')
+            json_obj = json.loads(json_str)
+            return JsonResponse({'dataset': json_obj,
+                                'missing_percentage': missing_percentage,
+                                'total_missing_percentage': total_missing_percentage,
+                                'num_rows': num_rows,
+                                'num_columns': num_columns
+                                })
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
     
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
