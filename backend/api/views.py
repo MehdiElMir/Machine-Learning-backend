@@ -26,6 +26,7 @@ def process_csv(request):
     
     missing_percentage = (df.isnull().sum() / df.shape[0] * 100).to_dict()      
     total_missing_percentage = sum([True for idx,row in df.iterrows() if any(row.isnull())]) 
+    numeric_columns_names = df.select_dtypes(include='number').columns.tolist() 
     
     #mean_values = df.mean().to_dict()
     
@@ -37,7 +38,8 @@ def process_csv(request):
                          'total_missing_percentage': total_missing_percentage,
                          'num_rows': num_rows,
                          #'mean_values': mean_values,
-                         'num_columns': num_columns
+                         'num_columns': num_columns,
+                         'numeric_columns_names':numeric_columns_names
                          })
         
 #Suppression des lignes des missing values 
@@ -55,7 +57,8 @@ def delete_missing_row(request):
             num_rows, num_columns = df_supp.shape    
             missing_percentage = (df_supp.isnull().sum() / df_supp.shape[0] * 100).to_dict()  
             print(missing_percentage)    
-            total_missing_percentage = sum(missing_percentage.values()) 
+            total_missing_percentage = sum([True for idx,row in df_supp.iterrows() if any(row.isnull())]) 
+            numeric_columns_names = df_supp.select_dtypes(include='number').columns.tolist() 
             
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
@@ -64,7 +67,8 @@ def delete_missing_row(request):
                          'missing_percentage': missing_percentage,
                          'total_missing_percentage': total_missing_percentage,
                           'num_rows': num_rows,
-                         'num_columns': num_columns
+                         'num_columns': num_columns,
+                         'numeric_columns_names':numeric_columns_names
                          })
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405) 
@@ -84,7 +88,8 @@ def delete_selected_columns(request):
         df.drop(columns=columns_to_delete, inplace=True, errors='ignore')
         num_rows, num_columns = df.shape    
         missing_percentage = (df.isnull().sum() / df.shape[0] * 100).to_dict()  
-        total_missing_percentage = sum(missing_percentage.values()) 
+        total_missing_percentage = sum([True for idx,row in df.iterrows() if any(row.isnull())]) 
+        numeric_columns_names = df.select_dtypes(include='number').columns.tolist() 
         
         json_str = df.to_json(orient='records')
         json_obj = json.loads(json_str)
@@ -92,7 +97,8 @@ def delete_selected_columns(request):
                             'missing_percentage': missing_percentage,
                             'total_missing_percentage': total_missing_percentage,
                             'num_rows': num_rows,
-                            'num_columns': num_columns
+                            'num_columns': num_columns,
+                            'numeric_columns_names':numeric_columns_names
                             })
     else:
        
@@ -127,7 +133,8 @@ def imputate_selected_column(request):
             json_obj = json.loads(json_str)
             num_rows, num_columns = df.shape    
             missing_percentage = (df.isnull().sum() / df.shape[0] * 100).to_dict()  
-            total_missing_percentage = sum(missing_percentage.values()) 
+            total_missing_percentage = sum([True for idx,row in df.iterrows() if any(row.isnull())])
+            numeric_columns_names = df.select_dtypes(include='number').columns.tolist() 
             
             json_str = df.to_json(orient='records')
             json_obj = json.loads(json_str)
@@ -135,7 +142,8 @@ def imputate_selected_column(request):
                                 'missing_percentage': missing_percentage,
                                 'total_missing_percentage': total_missing_percentage,
                                 'num_rows': num_rows,
-                                'num_columns': num_columns
+                                'num_columns': num_columns,
+                                'numeric_columns_names':numeric_columns_names
                                 })
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
