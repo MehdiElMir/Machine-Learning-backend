@@ -15,7 +15,7 @@ def process_csv(request):
     num_rows, num_columns = df.shape    
     
     missing_percentage = (df.isnull().sum() / df.shape[0] * 100).to_dict()      
-    total_missing_percentage = sum(missing_percentage.values()) 
+    total_missing_percentage = sum([True for idx,row in df.iterrows() if any(row.isnull())]) 
     
     #mean_values = df.mean().to_dict()
     
