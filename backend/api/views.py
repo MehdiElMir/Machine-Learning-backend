@@ -414,4 +414,69 @@ def cross_validation(request):
 
     return JsonResponse({'error': 'Only POST requests are supported.'})
 
+def calculate_accuracy(y_true, y_pred):
+    # Calculer le nombre de prédictions correctes
+    correct_predictions = sum(1 for true, pred in zip(y_true, y_pred) if true == pred)
+    
+    # Calculer le nombre total de prédictions
+    total_predictions = len(y_true)
+    
+    # Calculer la précision en pourcentage
+    accuracy = (correct_predictions / total_predictions) * 100.0
+    
+    return accuracy
+
+def knn_classification(request):
+    if request.method == 'POST':
+        try:
+            body_unicode = request.body.decode('utf-8')
+            body_data = json.loads(body_unicode)
+            
+            dataset = body_data.get('dataset', [])
+            features = body_data.get('features', [])
+            target = body_data.get('target', '')
+            k_neighbors = body_data.get('k_neighbors', 5)  # Défaut à 5 si non spécifié
+            
+            df = pd.DataFrame(dataset)
+            X = df[features]
+            y = df[target]
+           
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+            
+            knn_classifier = KNeighborsClassifier(n_neighbors=k_neighbors)
+            
+            knn_classifier.fit(X_train, y_train)
+            y_pred = knn_classifier.predict(X_test)
+            
+            accuracy = calculate_accuracy(y_test, y_pred)
+            
+            confusion_matrix = pd.crosstab(y_test, y_pred, rownames=['Actual'], colnames=['Predicted'])
+            
+            plt.figure(figsize=(10, 6))
+            sns.scatterplot(x=y_test.index, y=y_test, label='Actual', marker='o', color='blue')
+            sns.scatterplot(x=y_test.index, y=y_pred, label='Predicted', marker='x', color='red')
+            plt.title('KNN Classification - Actual vs Predicted')
+            plt.xlabel('Index')
+            plt.ylabel('Target Value')
+            plt.legend()
+            plt.savefig('knn_classification_plot.png')  # Enregistrer le graphique comme fichier image
+            
+            # Préparer la réponse
+            response_data = {
+                'accuracy': accuracy,
+                'confusion_matrix': confusion_matrix.to_dict(),
+                'message': 'KNN classification completed successfully.',
+                'plot_image_path': 'knn_classification_plot.png'  # Chemin de l'image du graphique
+            }
+            
+            return JsonResponse(response_data, status=200)
+        
+        except Exception as e:
+            error_response = {'error': str(e)}
+            return JsonResponse(error_response, status=400)
+    
+    else:
+        # Gérer la méthode de requête GET
+        return JsonResponse({'error': 'Seules les requêtes POST sont autorisées.'}, status=405)
+
 
