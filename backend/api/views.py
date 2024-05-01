@@ -6,6 +6,8 @@ import io
 import base64
 import matplotlib.pyplot as plt
 from django.http import JsonResponse
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
 import plotly.express as px
 import json
 import numpy as np
@@ -18,6 +20,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LassoCV
+
 
 def process_csv(request):
     uploaded_file = request.FILES['file']
@@ -156,20 +159,16 @@ def linear_regression(request):
      if request.method == 'POST':
         body_unicode = request.body.decode('utf-8')
         body_data = json.loads(body_unicode)
-
         dataset = body_data.get('dataset', [])
         selected_columns = body_data.get('selected_columns', [])
         target = body_data.get('target', '')
-
         df = pd.DataFrame(dataset)
-
         plot = sns.pairplot(df, x_vars=selected_columns, y_vars=target, height=7, aspect=0.7,
                             kind='reg', plot_kws={'ci': None, 'line_kws': {'color': 'red'}})
 
         buffer = io.BytesIO()
         plot.savefig(buffer, format='png')
         buffer.seek(0)
-
         encoded_img = base64.b64encode(buffer.read()).decode('utf-8')
 
         return JsonResponse({'encoded_img': encoded_img})
@@ -417,13 +416,10 @@ def cross_validation(request):
 def calculate_accuracy(y_true, y_pred):
     # Calculer le nombre de prédictions correctes
     correct_predictions = sum(1 for true, pred in zip(y_true, y_pred) if true == pred)
-    
     # Calculer le nombre total de prédictions
     total_predictions = len(y_true)
-    
     # Calculer la précision en pourcentage
     accuracy = (correct_predictions / total_predictions) * 100.0
-    
     return accuracy
 
 def knn_classification(request):
@@ -435,7 +431,7 @@ def knn_classification(request):
             dataset = body_data.get('dataset', [])
             features = body_data.get('features', [])
             target = body_data.get('target', '')
-            k_neighbors = body_data.get('k_neighbors', 5)  # Défaut à 5 si non spécifié
+            k_neighbors = body_data.get('k_neighbors', 5)  
             
             df = pd.DataFrame(dataset)
             X = df[features]
@@ -444,7 +440,6 @@ def knn_classification(request):
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
             
             knn_classifier = KNeighborsClassifier(n_neighbors=k_neighbors)
-            
             knn_classifier.fit(X_train, y_train)
             y_pred = knn_classifier.predict(X_test)
             
@@ -458,25 +453,24 @@ def knn_classification(request):
             plt.title('KNN Classification - Actual vs Predicted')
             plt.xlabel('Index')
             plt.ylabel('Target Value')
-            plt.legend()
-            plt.savefig('knn_classification_plot.png')  # Enregistrer le graphique comme fichier image
+            plot_image_path = 'knn_classification_plot.png'
+            plt.savefig(plot_image_path)
             
-            # Préparer la réponse
+            # Lire et encoder l'image en base64
+            with open(plot_image_path, 'rb') as image_file:
+                encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
+            
             response_data = {
                 'accuracy': accuracy,
                 'confusion_matrix': confusion_matrix.to_dict(),
                 'message': 'KNN classification completed successfully.',
-                'plot_image_path': 'knn_classification_plot.png'  # Chemin de l'image du graphique
+                'plot_image_base64': encoded_image  
             }
             
             return JsonResponse(response_data, status=200)
-        
         except Exception as e:
             error_response = {'error': str(e)}
             return JsonResponse(error_response, status=400)
     
     else:
-        # Gérer la méthode de requête GET
         return JsonResponse({'error': 'Seules les requêtes POST sont autorisées.'}, status=405)
-
-
