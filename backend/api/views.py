@@ -18,6 +18,10 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LassoCV
+from imblearn.over_sampling import SMOTE 
+from imblearn.over_sampling import RandomOverSampler
+
+
 
 def process_csv(request):
     uploaded_file = request.FILES['file']
@@ -177,31 +181,6 @@ def linear_regression(request):
      else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
         
-def save_state(request):
-    
-    if request.method == 'POST':
-        body_unicode = request.body.decode('utf-8')
-        body_data = json.loads(body_unicode)
-        
-        selected_columns = body_data.get('selected_columns', [])
-        
-        # Enregistrement des colonnes sélectionnées dans les cookies
-        response = JsonResponse({'message': 'État enregistré avec succès'})
-        response.set_cookie('selected_columns', json.dumps(selected_columns))
-        
-        return response
-    else:
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
-
-def load_state(request):
-     if request.method == 'GET':
-         
-         # Récupération des colonnes sélectionnées à partir des cookies
-         selected_columns = json.loads(request.COOKIES.get('selected_columns', '[]'))
-        
-         return JsonResponse({'selected_columns': selected_columns})
-     else:
-         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
 def generate_plot_data(request):
@@ -290,68 +269,6 @@ def regression_linear_3D(request):
 
     return JsonResponse({'plot_data': json_obj})
 
-# def cross_validation(request):
-#     if request.method == 'POST':
-#         body_unicode = request.body.decode('utf-8')
-#         body_data = json.loads(body_unicode)
-        
-#         dataset = body_data.get('dataset', [])
-#         features = body_data.get('features', [])
-#         target = body_data.get('target','')
-#         df = pd.DataFrame(dataset)
-        
-    
-#         N_FOLD = 6
-
-#         # preprocess the data
-#         X = df.drop(columns=features)
-#         categorical_features =df.select_dtypes(exclude=["number","bool_","object_"])
-#         X = pd.get_dummies(X, categorical_features)
-#         y = df[target]
-
-#         # Normalize the data
-#         scaler = StandardScaler()
-#         X_scaled = scaler.fit_transform(X)
-
-#         # Train model to predict life expectancy
-#         model = LassoCV(cv=N_FOLD)
-#         model.fit(X_scaled, y)
-#         mean_alphas = model.mse_path_.mean(axis=-1)
-
-#         fig = go.Figure([
-#             go.Scatter(
-#                 x=model.alphas_, y=model.mse_path_[:, i],
-#                 name=f"Fold: {i+1}", opacity=.5, line=dict(dash='dash'),
-#                 hovertemplate="alpha: %{x} <br>MSE: %{y}"
-#             )
-#             for i in range(N_FOLD)
-#         ])
-#         fig.add_traces(go.Scatter(
-#             x=model.alphas_, y=mean_alphas,
-#             name='Mean', line=dict(color='black', width=3),
-#             hovertemplate="alpha: %{x} <br>MSE: %{y}",
-#         ))
-
-#         fig.add_shape(
-#             type="line", line=dict(dash='dash'),
-#             x0=model.alpha_, y0=0,
-#             x1=model.alpha_, y1=1,
-#             yref='paper'
-#         )
-
-#         fig.update_layout(
-#             xaxis_title='alpha',
-#             xaxis_type="log",
-#             yaxis_title="Mean Square Error (MSE)"
-#         )
-        
-#         plot_data = fig.to_json()
-#         json_obj = json.loads(plot_data) 
-                   
-
-#     return JsonResponse({'plot_data': json_obj})
-
-
 def cross_validation(request):
     if request.method == 'POST':
         body_unicode = request.body.decode('utf-8')
@@ -413,5 +330,37 @@ def cross_validation(request):
         return JsonResponse({'plot_data': json_obj})
 
     return JsonResponse({'error': 'Only POST requests are supported.'})
+
+def smote(request):
+     if request.method == 'POST':
+        body_unicode = request.body.decode('utf-8')
+        body_data = json.loads(body_unicode)
+        
+        dataset = body_data.get('dataset', [])
+        target = body_data.get('target','')
+        df = pd.DataFrame(dataset)
+        
+        X = df.drop([target], axis=1)
+        y = df[target]
+      
+        #ros = RandomOverSampler(sampling_strategy=1) 
+        ros = RandomOverSampler(sampling_strategy="not majority")
+        X_res, y_res = ros.fit_resample(X, y)
+        
+     
+        y_res_list= y_res.tolist()
+        
+        balanced_df = pd.DataFrame(X_res, columns=X.columns)
+        
+        balanced_df = pd.concat([balanced_df, pd.Series(y_res_list, name = target)], axis=1)
+        
+        json_str = balanced_df.to_json(orient='records')
+        json_obj = json.loads(json_str)
+
+     
+        return JsonResponse({'data': json_obj})
+
+
+
 
 
