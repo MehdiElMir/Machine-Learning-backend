@@ -6,11 +6,13 @@ urlpatterns = [
     path('delete_selected_columns/', views.delete_selected_columns, name='delete_selected_columns'),
     path('imputate_selected_column/', views.imputate_selected_column, name='imputate_selected_column'),
     path('linear_regression/', views.linear_regression, name='linear_regression'),
-
     path('generate_plot_data/', views.generate_plot_data, name='generate_plot_data'),
     path('regression_linear_sckitlearn/', views.regression_linear_sckitlearn, name='regression_linear_sckitlearn'),
     path('regression_linear_3D/', views.regression_linear_3D, name='regression_linear_3D'),
     path('cross_validation/', views.cross_validation, name='cross_validation'),
-     path('knn_classification/', views.knn_classification, name='knn_classification'),
+    path('knn_classification/', views.knn_classification, name='knn_classification'),
+    path('smote/', views.smote, name='smote'),
+
+     
 
 ]

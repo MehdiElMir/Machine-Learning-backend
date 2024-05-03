@@ -325,4 +325,32 @@ def cross_validation(request):
 
     return JsonResponse({'error': 'Only POST requests are supported.'})
 
+def smote(request):
+     if request.method == 'POST':
+        body_unicode = request.body.decode('utf-8')
+        body_data = json.loads(body_unicode)
+
+        dataset = body_data.get('dataset', [])
+        target = body_data.get('target','')
+        df = pd.DataFrame(dataset)
+
+        X = df.drop([target], axis=1)
+        y = df[target]
+
+        #ros = RandomOverSampler(sampling_strategy=1) 
+        ros = RandomOverSampler(sampling_strategy="not majority")
+        X_res, y_res = ros.fit_resample(X, y)
+
+
+        y_res_list= y_res.tolist()
+
+        balanced_df = pd.DataFrame(X_res, columns=X.columns)
+
+        balanced_df = pd.concat([balanced_df, pd.Series(y_res_list, name = target)], axis=1)
+
+        json_str = balanced_df.to_json(orient='records')
+        json_obj = json.loads(json_str)
+
+
+        return JsonResponse({'data': json_obj})
 
