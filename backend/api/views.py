@@ -6,6 +6,8 @@ import io
 import base64
 import matplotlib.pyplot as plt
 from django.http import JsonResponse
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
 import plotly.express as px
 import json
 import numpy as np
@@ -18,10 +20,6 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LassoCV
-from imblearn.over_sampling import SMOTE 
-from imblearn.over_sampling import RandomOverSampler
-
-
 
 def process_csv(request):
     uploaded_file = request.FILES['file']
@@ -160,20 +158,16 @@ def linear_regression(request):
      if request.method == 'POST':
         body_unicode = request.body.decode('utf-8')
         body_data = json.loads(body_unicode)
-
         dataset = body_data.get('dataset', [])
         selected_columns = body_data.get('selected_columns', [])
         target = body_data.get('target', '')
-
         df = pd.DataFrame(dataset)
-
         plot = sns.pairplot(df, x_vars=selected_columns, y_vars=target, height=7, aspect=0.7,
                             kind='reg', plot_kws={'ci': None, 'line_kws': {'color': 'red'}})
 
         buffer = io.BytesIO()
         plot.savefig(buffer, format='png')
         buffer.seek(0)
-
         encoded_img = base64.b64encode(buffer.read()).decode('utf-8')
 
         return JsonResponse({'encoded_img': encoded_img})
@@ -330,37 +324,5 @@ def cross_validation(request):
         return JsonResponse({'plot_data': json_obj})
 
     return JsonResponse({'error': 'Only POST requests are supported.'})
-
-def smote(request):
-     if request.method == 'POST':
-        body_unicode = request.body.decode('utf-8')
-        body_data = json.loads(body_unicode)
-        
-        dataset = body_data.get('dataset', [])
-        target = body_data.get('target','')
-        df = pd.DataFrame(dataset)
-        
-        X = df.drop([target], axis=1)
-        y = df[target]
-      
-        #ros = RandomOverSampler(sampling_strategy=1) 
-        ros = RandomOverSampler(sampling_strategy="not majority")
-        X_res, y_res = ros.fit_resample(X, y)
-        
-     
-        y_res_list= y_res.tolist()
-        
-        balanced_df = pd.DataFrame(X_res, columns=X.columns)
-        
-        balanced_df = pd.concat([balanced_df, pd.Series(y_res_list, name = target)], axis=1)
-        
-        json_str = balanced_df.to_json(orient='records')
-        json_obj = json.loads(json_str)
-
-     
-        return JsonResponse({'data': json_obj})
-
-
-
 
 
