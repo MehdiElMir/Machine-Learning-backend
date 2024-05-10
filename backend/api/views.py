@@ -8,13 +8,13 @@ import matplotlib.pyplot as plt
 from django.http import JsonResponse
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
-import plotly.express as px
 import json
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
 import plotly.graph_objects as go
+from sklearn.datasets import make_moons
 from sklearn.svm import SVR
 import numpy as np
 import pandas as pd
@@ -153,29 +153,30 @@ def imputate_selected_column(request):
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
     
-#linear_regression    
+#linear_regression
+#pip install -U kaleido  
 def linear_regression(request):
-     if request.method == 'POST':
-        body_unicode = request.body.decode('utf-8')
-        body_data = json.loads(body_unicode)
-        dataset = body_data.get('dataset', [])
-        selected_columns = body_data.get('selected_columns', [])
-        target = body_data.get('target', '')
-        df = pd.DataFrame(dataset)
-        plot = sns.pairplot(df, x_vars=selected_columns, y_vars=target, height=7, aspect=0.7,
-                            kind='reg', plot_kws={'ci': None, 'line_kws': {'color': 'red'}})
-
-        buffer = io.BytesIO()
-        plot.savefig(buffer, format='png')
-        buffer.seek(0)
-        encoded_img = base64.b64encode(buffer.read()).decode('utf-8')
-
-        return JsonResponse({'encoded_img': encoded_img})
-
-     else:
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    if request.method == 'POST':
+        try:
+            body_unicode = request.body.decode('utf-8')
+            body_data = json.loads(body_unicode)
+            dataset = body_data.get('dataset', [])
+            selected_columns = body_data.get('selected_columns', [])
+            target = body_data.get('target', '')
+            df = pd.DataFrame(dataset)
+            fig = px.scatter(df, x=selected_columns[0], y=target, opacity=0.65,
+                             trendline='ols', trendline_color_override='darkblue')
+            
+            buffer = io.BytesIO()
+            fig.write_image(buffer, format='png')
+            buffer.seek(0)
+            encoded_img = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            return JsonResponse({'encoded_img': encoded_img})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    else:
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
         
-
 
 def generate_plot_data(request):
     if request.method == 'GET':
@@ -353,4 +354,36 @@ def smote(request):
 
 
         return JsonResponse({'data': json_obj})
+    
+def knn_classification(request):
+    if request.method == 'POST':
+        try:
+            X, y = make_moons(noise=0.3, random_state=0)
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y.astype(str), test_size=0.25, random_state=0)
 
+            clf = KNeighborsClassifier(15)
+            clf.fit(X_train, y_train)
+            y_score = clf.predict_proba(X_test)[:, 1]
+
+            fig = px.scatter(
+                X_test, x=0, y=1,
+                color=y_score, color_continuous_scale='RdBu',
+                symbol=y_test, symbol_map={'0': 'square-dot', '1': 'circle-dot'},
+                labels={'symbol': 'label', 'color': 'score of <br>first class'}
+            )
+            fig.update_traces(marker_size=12, marker_line_width=1.5)
+            fig.update_layout(legend_orientation='h')
+
+            buffer = io.BytesIO()
+            fig.write_image(buffer, format='png')
+            buffer.seek(0)
+            encoded_img = base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+            return JsonResponse({'encoded_img': encoded_img})
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    else:
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
