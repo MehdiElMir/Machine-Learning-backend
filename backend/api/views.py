@@ -7,7 +7,7 @@ import base64
 import matplotlib.pyplot as plt
 from django.http import JsonResponse
 from sklearn.model_selection import train_test_split
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 import json
 import numpy as np
 import plotly.express as px
@@ -16,8 +16,7 @@ from sklearn.linear_model import LinearRegression
 import plotly.graph_objects as go
 from sklearn.datasets import make_moons
 from sklearn.svm import SVR
-import numpy as np
-import pandas as pd
+from sklearn.datasets import make_moons
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LassoCV
 
@@ -380,6 +379,50 @@ def knn_classification(request):
             buffer.seek(0)
             encoded_img = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
+            return JsonResponse({'encoded_img': encoded_img})
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    else:
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+
+def knn_regression(request):
+    if request.method == 'POST':
+        try:
+            # Générer les données
+            X, y = make_moons(noise=0.3, random_state=0)
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=0.25, random_state=0)
+
+            # Créer et entraîner le modèle de régression KNN
+            clf = KNeighborsRegressor(n_neighbors=15)
+            clf.fit(X_train, y_train)
+
+            # Prédire les valeurs sur les données de test
+            y_pred = clf.predict(X_test)
+
+            # Créer un DataFrame avec les données de test et les prédictions
+            df_pred = pd.DataFrame(np.column_stack((X_test[:, 0], X_test[:, 1], y_test, y_pred)),
+                                   columns=['feature_1', 'feature_2', 'true_target', 'predicted_target'])
+
+            # Créer un scatter plot avec Plotly Express
+            fig = px.scatter(df_pred, x='feature_1', y='feature_2', color='predicted_target',
+                             color_continuous_scale='RdBu', labels={'color': 'predicted target'})
+
+            fig.update_traces(marker_size=12, marker_line_width=1.5)
+            fig.update_layout(legend_orientation='h')
+
+            # Enregistrer le graphique dans un buffer BytesIO au format PNG
+            buffer = io.BytesIO()
+            fig.write_image(buffer, format='png')
+            buffer.seek(0)
+
+            # Encoder l'image en base64
+            encoded_img = base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+            # Retourner l'image encodée dans la réponse JSON
             return JsonResponse({'encoded_img': encoded_img})
 
         except Exception as e:

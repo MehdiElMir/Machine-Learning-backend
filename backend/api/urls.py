@@ -11,6 +11,7 @@ urlpatterns = [
     path('regression_linear_3D/', views.regression_linear_3D, name='regression_linear_3D'),
     path('cross_validation/', views.cross_validation, name='cross_validation'),
     path('knn_classification/', views.knn_classification, name='knn_classification'),
+     path('knn_regression/', views.knn_regression, name='knn_regression'),
     path('smote/', views.smote, name='smote'),
 
      
