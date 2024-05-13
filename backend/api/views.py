@@ -19,6 +19,8 @@ from sklearn.svm import SVR
 from sklearn.datasets import make_moons
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LassoCV
+from imblearn.under_sampling import RandomUnderSampler
+from imblearn.over_sampling import RandomOverSampler
 
 def process_csv(request):
     uploaded_file = request.FILES['file']
@@ -430,3 +432,44 @@ def knn_regression(request):
 
     else:
         return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+    
+
+
+def smote_undersampling(request):
+     if request.method == 'POST':
+        body_unicode = request.body.decode('utf-8')
+        body_data = json.loads(body_unicode)
+
+        dataset = body_data.get('dataset', [])
+        target = body_data.get('target','')
+        df = pd.DataFrame(dataset)
+
+        X = df.drop([target], axis=1)
+        y = df[target]
+
+        
+        #rus = RandomUnderSampler(sampling_strategy=1) # Numerical value
+        rus = RandomUnderSampler(sampling_strategy="not minority") # String
+        X_res, y_res = rus.fit_resample(X, y)
+
+        y_res_list= y_res.tolist()
+
+        balanced_df = pd.DataFrame(X_res, columns=X.columns)
+
+        balanced_df = pd.concat([balanced_df, pd.Series(y_res_list, name = target)], axis=1)
+
+        json_str = balanced_df.to_json(orient='records')
+        json_obj = json.loads(json_str)
+
+
+        return JsonResponse({'data': json_obj})    
+    
+    
+    
+       
+    
+    
+    
+    
+    
+    
