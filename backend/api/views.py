@@ -224,39 +224,31 @@ def regression_linear_3D(request):
     if request.method == 'POST':
         body_unicode = request.body.decode('utf-8')
         body_data = json.loads(body_unicode)
-        
         dataset = body_data.get('dataset', [])
         selected_y= body_data.get('selected_y','')
         selected_x1= body_data.get('selected_x1','')
         selected_x2= body_data.get('selected_x2','') 
         df = pd.DataFrame(dataset)
-   
         mesh_size = .02
         margin = 0
-            
         X = df[[selected_x1, selected_x2]]
         y = df[selected_y]
-
         # Condition the model on sepal width and length, predict the petal width
         model = SVR(C=1.)
         model.fit(X, y)
-
         # Create a mesh grid on which we will run our model
         x_min, x_max = X[selected_x1].min() - margin, X[selected_x1].max() + margin
         y_min, y_max = X[selected_x2].min() - margin, X[selected_x2].max() + margin
         xrange = np.arange(x_min, x_max, mesh_size)
         yrange = np.arange(y_min, y_max, mesh_size)
         xx, yy = np.meshgrid(xrange, yrange)
-
         # Run model
         pred = model.predict(np.c_[xx.ravel(), yy.ravel()])
         pred = pred.reshape(xx.shape)
-
         # Generate the plot
         fig = px.scatter_3d(df, x=selected_x1, y=selected_x2, z=selected_y)
         fig.update_traces(marker=dict(size=5))
         fig.add_traces(go.Surface(x=xrange, y=yrange, z=pred, name='pred_surface'))
-    
         plot_data = fig.to_json()
         json_obj = json.loads(plot_data) 
                    
@@ -360,11 +352,9 @@ def knn_classification(request):
             X, y = make_moons(noise=0.3, random_state=0)
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y.astype(str), test_size=0.25, random_state=0)
-
             clf = KNeighborsClassifier(15)
             clf.fit(X_train, y_train)
             y_score = clf.predict_proba(X_test)[:, 1]
-
             fig = px.scatter(
                 X_test, x=0, y=1,
                 color=y_score, color_continuous_scale='RdBu',
@@ -373,13 +363,12 @@ def knn_classification(request):
             )
             fig.update_traces(marker_size=12, marker_line_width=1.5)
             fig.update_layout(legend_orientation='h')
+            
+            plot_data = fig.to_json()
+            json_obj = json.loads(plot_data)
+            
 
-            buffer = io.BytesIO()
-            fig.write_image(buffer, format='png')
-            buffer.seek(0)
-            encoded_img = base64.b64encode(buffer.getvalue()).decode('utf-8')
-
-            return JsonResponse({'encoded_img': encoded_img})
+            return JsonResponse({'plot_data': json_obj})
 
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
@@ -395,7 +384,6 @@ def knn_regression(request):
             X, y = make_moons(noise=0.3, random_state=0)
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y, test_size=0.25, random_state=0)
-
             # Créer et entraîner le modèle de régression KNN
             clf = KNeighborsRegressor(n_neighbors=15)
             clf.fit(X_train, y_train)
@@ -413,18 +401,10 @@ def knn_regression(request):
 
             fig.update_traces(marker_size=12, marker_line_width=1.5)
             fig.update_layout(legend_orientation='h')
-
-            # Enregistrer le graphique dans un buffer BytesIO au format PNG
-            buffer = io.BytesIO()
-            fig.write_image(buffer, format='png')
-            buffer.seek(0)
-
-            # Encoder l'image en base64
-            encoded_img = base64.b64encode(buffer.getvalue()).decode('utf-8')
-
-            # Retourner l'image encodée dans la réponse JSON
-            return JsonResponse({'encoded_img': encoded_img})
-
+            
+            plot_data = fig.to_json()
+            json_obj = json.loads(plot_data)
+            return JsonResponse({'plot_data': json_obj})
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
