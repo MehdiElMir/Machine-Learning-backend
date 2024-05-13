@@ -21,6 +21,13 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LassoCV
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import RandomOverSampler
+from dash import Dash, dcc, html, Input, Output
+from sklearn.model_selection import train_test_split
+from sklearn import linear_model, tree, neighbors
+import plotly.graph_objects as go
+import plotly.express as px
+import numpy as np
+from sklearn.tree import DecisionTreeRegressor  
 
 def process_csv(request):
     uploaded_file = request.FILES['file']
@@ -443,6 +450,45 @@ def smote_undersampling(request):
 
 
         return JsonResponse({'data': json_obj})    
+    
+    
+def decision_tree(request):
+     if request.method == 'POST':
+        body_unicode = request.body.decode('utf-8')
+        body_data = json.loads(body_unicode)
+
+        dataset = body_data.get('dataset', [])
+        target = body_data.get('target','')
+        column = body_data.get('column','')
+
+        df = pd.DataFrame(dataset)
+
+        X = df[column].values[:, None]
+        
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, df[target], random_state=42)
+
+        model = DecisionTreeRegressor()
+        
+        model.fit(X_train, y_train)
+
+        x_range = np.linspace(X.min(), X.max(), 100)
+        y_range = model.predict(x_range.reshape(-1, 1))
+
+        fig = go.Figure([
+            go.Scatter(x=X_train.squeeze(), y=y_train, 
+                    name='train', mode='markers'),
+            go.Scatter(x=X_test.squeeze(), y=y_test, 
+                    name='test', mode='markers'),
+            go.Scatter(x=x_range, y=y_range, 
+                    name='prediction')
+        ])
+        
+        plot_data = fig.to_json()
+        json_obj = json.loads(plot_data)
+
+        return JsonResponse({'data': json_obj})    
+    
     
     
     

@@ -13,6 +13,7 @@ urlpatterns = [
     path('knn_regression/', views.knn_regression, name='knn_regression'),
     path('smote/', views.smote, name='smote'),
     path('smote_undersampling/', views.smote_undersampling, name='smote_undersampling'),
+    path('decision_tree/', views.decision_tree, name='decision_tree'),
 
      
 
