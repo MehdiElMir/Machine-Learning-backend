@@ -21,7 +21,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LassoCV
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import RandomOverSampler
-from dash import Dash, dcc, html, Input, Output
 from sklearn.model_selection import train_test_split
 from sklearn import linear_model, tree, neighbors
 import plotly.graph_objects as go
@@ -358,6 +357,13 @@ def smote(request):
 def knn_classification(request):
     if request.method == 'POST':
         try:
+            # body_unicode = request.body.decode('utf-8')
+            # body_data = json.loads(body_unicode)
+
+            # dataset = body_data.get('dataset', [])
+            # target = body_data.get('target','')
+            # df = pd.DataFrame(dataset)
+            
             X, y = make_moons(noise=0.3, random_state=0)
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y.astype(str), test_size=0.25, random_state=0)
@@ -487,7 +493,7 @@ def decision_tree(request):
         plot_data = fig.to_json()
         json_obj = json.loads(plot_data)
 
-        return JsonResponse({'data': json_obj})    
+        return JsonResponse({'plot_data': json_obj})    
     
     
     
