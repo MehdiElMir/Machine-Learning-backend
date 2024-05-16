@@ -361,12 +361,15 @@ def smote(request):
         balanced_df = pd.DataFrame(X_res, columns=X.columns)
 
         balanced_df = pd.concat([balanced_df, pd.Series(y_res_list, name = target)], axis=1)
+        num_rows, num_columns = balanced_df.shape
 
         json_str = balanced_df.to_json(orient='records')
         json_obj = json.loads(json_str)
 
 
-        return JsonResponse({'data': json_obj})
+        return JsonResponse({'data': json_obj,
+                             'num_rows': num_rows,
+                             })
     
 def knn_classification(request):
     if request.method == 'POST':
@@ -505,7 +508,7 @@ def knn_regression(request):
     
 
 
-def smote_undersampling(request):
+def undersampling(request):
      if request.method == 'POST':
         body_unicode = request.body.decode('utf-8')
         body_data = json.loads(body_unicode)
@@ -527,11 +530,13 @@ def smote_undersampling(request):
 
         balanced_df = pd.concat([balanced_df, pd.Series(y_res_list, name = target)], axis=1)
 
+        num_rows, num_columns = balanced_df.shape
+
         json_str = balanced_df.to_json(orient='records')
         json_obj = json.loads(json_str)
 
 
-        return JsonResponse({'data': json_obj})  
+        return JsonResponse({'data': json_obj,'num_rows': num_rows})  
 
 def generate_value_counts(request):
     if request.method == 'POST':
@@ -544,10 +549,13 @@ def generate_value_counts(request):
             df = pd.DataFrame(dataset)
 
             # Count occurrences of each category in the target column
-            value_counts = df[target].value_counts().to_dict()
+            value_counts = df[target].value_counts()
 
-            # Return the value counts in the JSON response
-            return JsonResponse({'value_counts': value_counts})
+            # Format the counts to the desired structure
+            formatted_counts = [{'value': count, 'name': name} for name, count in value_counts.items()]
+
+            # Return the formatted value counts in the JSON response
+            return JsonResponse({'values': formatted_counts})
 
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
