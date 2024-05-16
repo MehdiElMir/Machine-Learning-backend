@@ -408,31 +408,70 @@ def knn_classification(request):
 def knn_regression(request):
     if request.method == 'POST':
         try:
-            # Générer les données
-            X, y = make_moons(noise=0.3, random_state=0)
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.25, random_state=0)
-            # Créer et entraîner le modèle de régression KNN
-            clf = KNeighborsRegressor(n_neighbors=15)
-            clf.fit(X_train, y_train)
+            body_unicode = request.body.decode('utf-8')
+            body_data = json.loads(body_unicode)
+            # Extraire les données et paramètres du corps de la requête JSON
+            dataset = body_data.get('dataset', [])
+            target = body_data.get('target', '')
+            n_neighbors = body_data.get('n_neighbors', '')  # Nombre de voisins par défaut
 
-            # Prédire les valeurs sur les données de test
-            y_pred = clf.predict(X_test)
-
-            # Créer un DataFrame avec les données de test et les prédictions
-            df_pred = pd.DataFrame(np.column_stack((X_test[:, 0], X_test[:, 1], y_test, y_pred)),
-                                   columns=['feature_1', 'feature_2', 'true_target', 'predicted_target'])
-
-            # Créer un scatter plot avec Plotly Express
-            fig = px.scatter(df_pred, x='feature_1', y='feature_2', color='predicted_target',
-                             color_continuous_scale='RdBu', labels={'color': 'predicted target'})
-
-            fig.update_traces(marker_size=12, marker_line_width=1.5)
-            fig.update_layout(legend_orientation='h')
+            # Créer le DataFrame à partir du dataset
+            df = pd.DataFrame(dataset)
             
-            plot_data = fig.to_json()
-            json_obj = json.loads(plot_data)
-            return JsonResponse({'plot_data': json_obj})
+            # Vérifier la validité des données
+            if not df.empty and target in df.columns:
+                # Séparer les caractéristiques (X) et la cible (y)
+                X = df.drop(columns=[target])
+                y = df[target].astype(float)  # Assurez-vous que la cible est de type float
+
+                # Division des données en ensembles d'entraînement et de test
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X, y, test_size=0.25, random_state=0
+                )
+
+                # Initialiser et entraîner le modèle de régression KNN
+                clf = KNeighborsRegressor(n_neighbors=n_neighbors)
+                clf.fit(X_train, y_train)
+
+                # Prédire les valeurs sur l'ensemble de test
+                y_pred = clf.predict(X_test)
+
+                # Récupérer les noms des features (colonnes de X_test)
+                feature_names = X_test.columns.tolist()
+
+                # Créer un DataFrame avec les données de test et les prédictions
+                df_pred = pd.DataFrame({
+                    'feature_1': X_test.iloc[:, 0],
+                    'feature_2': X_test.iloc[:, 1],
+                    'true_target': y_test,
+                    'predicted_target': y_pred
+                })
+
+                # Créer un scatter plot avec Plotly Express en utilisant les noms des features
+                fig = px.scatter(
+                    df_pred, x='feature_1', y='feature_2',
+                    color='predicted_target', color_continuous_scale='RdBu',
+                    labels={'color': 'predicted target'},
+                    title='KNN Regression Prediction'
+                )
+
+                fig.update_traces(marker_size=12, marker_line_width=1.5)
+                fig.update_layout(legend_orientation='h')
+
+                # Renommer les axes x et y avec les noms des features
+                fig.update_xaxes(title_text=feature_names[0])
+                fig.update_yaxes(title_text=feature_names[1])
+
+                # Conversion du graphique en format JSON
+                plot_data = fig.to_json()
+                json_obj = json.loads(plot_data)
+
+                # Retourner les données du graphique dans la réponse JSON
+                return JsonResponse({'plot_data': json_obj})
+
+            else:
+                return JsonResponse({'error': 'Le dataset est vide ou la cible spécifiée est incorrecte.'}, status=400)
+
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
