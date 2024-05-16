@@ -27,6 +27,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
 from sklearn.tree import DecisionTreeRegressor  
+from sklearn.preprocessing import LabelEncoder
 
 def process_csv(request):
     uploaded_file = request.FILES['file']
@@ -36,11 +37,14 @@ def process_csv(request):
     missing_percentage = (df.isnull().sum() / df.shape[0] * 100).to_dict()      
     total_missing_percentage = sum([True for idx,row in df.iterrows() if any(row.isnull())]) 
     numeric_columns_names = df.select_dtypes(include='number').columns.tolist() 
+    categorical_columns_names = df.select_dtypes(include=['object', 'category']).columns.tolist() 
+
     
     #mean_values = df.mean().to_dict()
     
     json_str = df.to_json(orient='records')
     json_obj = json.loads(json_str)
+    
     
     return JsonResponse({'dataset': json_obj,
                          'missing_percentage': missing_percentage,
@@ -48,7 +52,8 @@ def process_csv(request):
                          'num_rows': num_rows,
                          #'mean_values': mean_values,
                          'num_columns': num_columns,
-                         'numeric_columns_names':numeric_columns_names
+                         'numeric_columns_names':numeric_columns_names,
+                         'categorical_columns_names':categorical_columns_names
                          })
         
 #Suppression des lignes des missing values 
@@ -67,7 +72,9 @@ def delete_missing_row(request):
             missing_percentage = (df_supp.isnull().sum() / df_supp.shape[0] * 100).to_dict()  
             print(missing_percentage)    
             total_missing_percentage = sum([True for idx,row in df_supp.iterrows() if any(row.isnull())]) 
-            numeric_columns_names = df_supp.select_dtypes(include='number').columns.tolist() 
+            numeric_columns_names = df_supp.select_dtypes(include='number').columns.tolist()
+            categorical_columns_names = df.select_dtypes(include=['object', 'category']).columns.tolist()
+ 
             
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
@@ -77,7 +84,8 @@ def delete_missing_row(request):
                          'total_missing_percentage': total_missing_percentage,
                           'num_rows': num_rows,
                          'num_columns': num_columns,
-                         'numeric_columns_names':numeric_columns_names
+                         'numeric_columns_names':numeric_columns_names,
+                         'categorical_columns_names':categorical_columns_names
                          })
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405) 
@@ -98,7 +106,9 @@ def delete_selected_columns(request):
         num_rows, num_columns = df.shape    
         missing_percentage = (df.isnull().sum() / df.shape[0] * 100).to_dict()  
         total_missing_percentage = sum([True for idx,row in df.iterrows() if any(row.isnull())]) 
-        numeric_columns_names = df.select_dtypes(include='number').columns.tolist() 
+        numeric_columns_names = df.select_dtypes(include='number').columns.tolist()
+        categorical_columns_names = df.select_dtypes(include=['object', 'category']).columns.tolist()
+ 
         
         json_str = df.to_json(orient='records')
         json_obj = json.loads(json_str)
@@ -107,7 +117,8 @@ def delete_selected_columns(request):
                             'total_missing_percentage': total_missing_percentage,
                             'num_rows': num_rows,
                             'num_columns': num_columns,
-                            'numeric_columns_names':numeric_columns_names
+                            'numeric_columns_names':numeric_columns_names,
+                            'categorical_columns_names':categorical_columns_names
                             })
     else:
        
@@ -143,7 +154,9 @@ def imputate_selected_column(request):
             num_rows, num_columns = df.shape    
             missing_percentage = (df.isnull().sum() / df.shape[0] * 100).to_dict()  
             total_missing_percentage = sum([True for idx,row in df.iterrows() if any(row.isnull())])
-            numeric_columns_names = df.select_dtypes(include='number').columns.tolist() 
+            numeric_columns_names = df.select_dtypes(include='number').columns.tolist()
+            categorical_columns_names = df.select_dtypes(include=['object', 'category']).columns.tolist()
+ 
             
             json_str = df.to_json(orient='records')
             json_obj = json.loads(json_str)
@@ -152,7 +165,8 @@ def imputate_selected_column(request):
                                 'total_missing_percentage': total_missing_percentage,
                                 'num_rows': num_rows,
                                 'num_columns': num_columns,
-                                'numeric_columns_names':numeric_columns_names
+                                'numeric_columns_names':numeric_columns_names,
+                                'categorical_columns_names':categorical_columns_names
                                 })
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
@@ -361,41 +375,53 @@ def knn_classification(request):
             body_data = json.loads(body_unicode)
             dataset = body_data.get('dataset', [])
             target = body_data.get('target', '')
-            n_neighbors=body_data.get('n_neighbors', '')
+            n_neighbors = int(body_data.get('n_neighbors', 5))  # Default to 5 neighbors if not provided
 
             df = pd.DataFrame(dataset)
-            # Extraction des caractéristiques (X) et de la cible (y) à partir du DataFrame
-            X = df.drop(columns=target)  # Sélectionnez toutes les colonnes sauf la cible
-            y = df[target].astype(str)  # Sélectionnez la colonne cible et la convertissez en str si nécessaire
 
-            # Division des données en ensembles d'entraînement et de test
+            # Extract features (X) and target (y) from the DataFrame
+            X = df.drop(columns=target)
+            # Convert categorical features to numeric using one-hot encoding
+            X = pd.get_dummies(X)
+
+            # Encode the target column
+            le = LabelEncoder()
+            y = le.fit_transform(df[target])
+
+            # Split the data into training and test sets
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y, test_size=0.25, random_state=0
             )
-            # Initialisation et entraînement du classificateur KNN
+
+            # Initialize and train the KNN classifier
             clf = KNeighborsClassifier(n_neighbors=n_neighbors)
             clf.fit(X_train, y_train)
-            # Prédiction des probabilités sur l'ensemble de test
+
+            # Predict probabilities on the test set
             y_score = clf.predict_proba(X_test)[:, 1]
-            # Création du DataFrame pour le graphique avec les données de test et les prédictions
+
+            # Create DataFrame for the plot with test data and predictions
             df_plot = pd.DataFrame({
                 'x': X_test.iloc[:, 0],
                 'y': X_test.iloc[:, 1],
-                'true_label': y_test,
+                'true_label': le.inverse_transform(y_test),  # Use original category names
                 'score': y_score
             })
-            # Création du graphique de dispersion interactif avec Plotly Express
+
+            # Create the scatter plot with Plotly Express
             fig = px.scatter(
                 df_plot, x='x', y='y',
                 color='score', color_continuous_scale='RdBu',
-                symbol='true_label', symbol_map={'0': 'square-dot', '1': 'circle-dot'},
+                symbol='true_label',
                 labels={'symbol': 'label', 'color': 'score of <br>first class'}
             )
             fig.update_traces(marker_size=12, marker_line_width=1.5)
             fig.update_layout(legend_orientation='h')
-            # Conversion du graphique en format JSON
+
+            # Convert the plot to JSON
             plot_data = fig.to_json()
-            # Retourne les données du graphique dans la réponse JSON
+
+            # Return the plot data in the JSON response
             return JsonResponse({'plot_data': json.loads(plot_data)})
 
         except Exception as e:
@@ -403,7 +429,6 @@ def knn_classification(request):
 
     else:
         return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
-
 
 def knn_regression(request):
     if request.method == 'POST':
@@ -452,7 +477,6 @@ def smote_undersampling(request):
 
         X = df.drop([target], axis=1)
         y = df[target]
-
         
         #rus = RandomUnderSampler(sampling_strategy=1) # Numerical value
         rus = RandomUnderSampler(sampling_strategy="not minority") # String
@@ -468,7 +492,29 @@ def smote_undersampling(request):
         json_obj = json.loads(json_str)
 
 
-        return JsonResponse({'data': json_obj})    
+        return JsonResponse({'data': json_obj})  
+
+def generate_value_counts(request):
+    if request.method == 'POST':
+        try:
+            body_unicode = request.body.decode('utf-8')
+            body_data = json.loads(body_unicode)
+
+            dataset = body_data.get('dataset', [])
+            target = body_data.get('target', '')
+            df = pd.DataFrame(dataset)
+
+            # Count occurrences of each category in the target column
+            value_counts = df[target].value_counts().to_dict()
+
+            # Return the value counts in the JSON response
+            return JsonResponse({'value_counts': value_counts})
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    else:
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
     
     
 def decision_tree(request):
@@ -493,6 +539,7 @@ def decision_tree(request):
 
         x_range = np.linspace(X.min(), X.max(), 100)
         y_range = model.predict(x_range.reshape(-1, 1))
+        
 
         fig = go.Figure([
             go.Scatter(x=X_train.squeeze(), y=y_train, 
