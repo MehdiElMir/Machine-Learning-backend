@@ -357,33 +357,46 @@ def smote(request):
 def knn_classification(request):
     if request.method == 'POST':
         try:
-            # body_unicode = request.body.decode('utf-8')
-            # body_data = json.loads(body_unicode)
+            body_unicode = request.body.decode('utf-8')
+            body_data = json.loads(body_unicode)
+            dataset = body_data.get('dataset', [])
+            target = body_data.get('target', '')
+            n_neighbors=body_data.get('n_neighbors', '')
 
-            # dataset = body_data.get('dataset', [])
-            # target = body_data.get('target','')
-            # df = pd.DataFrame(dataset)
-            
-            X, y = make_moons(noise=0.3, random_state=0)
+            df = pd.DataFrame(dataset)
+            # Extraction des caractéristiques (X) et de la cible (y) à partir du DataFrame
+            X = df.drop(columns=target)  # Sélectionnez toutes les colonnes sauf la cible
+            y = df[target].astype(str)  # Sélectionnez la colonne cible et la convertissez en str si nécessaire
+
+            # Division des données en ensembles d'entraînement et de test
             X_train, X_test, y_train, y_test = train_test_split(
-                X, y.astype(str), test_size=0.25, random_state=0)
-            clf = KNeighborsClassifier(15)
+                X, y, test_size=0.25, random_state=0
+            )
+            # Initialisation et entraînement du classificateur KNN
+            clf = KNeighborsClassifier(n_neighbors=n_neighbors)
             clf.fit(X_train, y_train)
+            # Prédiction des probabilités sur l'ensemble de test
             y_score = clf.predict_proba(X_test)[:, 1]
+            # Création du DataFrame pour le graphique avec les données de test et les prédictions
+            df_plot = pd.DataFrame({
+                'x': X_test.iloc[:, 0],
+                'y': X_test.iloc[:, 1],
+                'true_label': y_test,
+                'score': y_score
+            })
+            # Création du graphique de dispersion interactif avec Plotly Express
             fig = px.scatter(
-                X_test, x=0, y=1,
-                color=y_score, color_continuous_scale='RdBu',
-                symbol=y_test, symbol_map={'0': 'square-dot', '1': 'circle-dot'},
+                df_plot, x='x', y='y',
+                color='score', color_continuous_scale='RdBu',
+                symbol='true_label', symbol_map={'0': 'square-dot', '1': 'circle-dot'},
                 labels={'symbol': 'label', 'color': 'score of <br>first class'}
             )
             fig.update_traces(marker_size=12, marker_line_width=1.5)
             fig.update_layout(legend_orientation='h')
-            
+            # Conversion du graphique en format JSON
             plot_data = fig.to_json()
-            json_obj = json.loads(plot_data)
-            
-
-            return JsonResponse({'plot_data': json_obj})
+            # Retourne les données du graphique dans la réponse JSON
+            return JsonResponse({'plot_data': json.loads(plot_data)})
 
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
