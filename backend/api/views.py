@@ -611,29 +611,57 @@ def logistic_regression(request):
             body_data = json.loads(body_unicode)
             dataset = body_data.get('dataset', [])
             target = body_data.get('target', '')
+
+            # Create DataFrame from the dataset
             df = pd.DataFrame(dataset)
-            
+
+            # Extract features (X) and target (y) from the DataFrame
             X = df.drop(columns=target)
             # Convert categorical features to numeric using one-hot encoding
             X = pd.get_dummies(X)
+
+            # Encode the target column
             le = LabelEncoder()
             y = le.fit_transform(df[target])
+
+            # Split the data into training and test sets
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
+
+            # Initialize and train the logistic regression classifier
             clf = linear_model.LogisticRegression(C=1e5)
             clf.fit(X_train, y_train)
+
+            # Select the first feature for plotting
             X_train_feature1 = X_train.iloc[:, 0].values.reshape(-1, 1)
-            X_test_feature1 = X_test.iloc[:, 0].values.reshape(-1, 1)
+
+            # Generate a sequence of values for X for plotting the decision boundary
             X_range = np.linspace(X_train_feature1.min(), X_train_feature1.max(), 300).reshape(-1, 1)
+            # Repeat X_range to match the number of features expected by the model
             X_range_full = np.hstack([X_range] * X_train.shape[1])
             y_range = clf.predict_proba(X_range_full)[:, 1]
 
-            fig = go.Figure([
-                go.Scatter(x=X_train.squeeze(), y=y_train, mode='markers', name='train'),
-                go.Scatter(x=X_test.squeeze(), y=y_test, mode='markers', name='test'),
-                go.Scatter(x=X_range_full.squeeze(), y=y_range, mode='lines', name='prediction', line=dict(color='blue'))
-            ])
+            # Create a Plotly figure
+            fig = go.Figure()
+
+            # Add scatter plot for the training data
+            fig.add_trace(go.Scatter(x=X_train.iloc[:, 0], y=y_train, mode='markers', name='Training data', marker=dict(color='black')))
+
+            # Add line plot for the decision boundary
+            fig.add_trace(go.Scatter(x=X_range.ravel(), y=y_range, mode='lines', name='Decision boundary', line=dict(color='blue')))
+
+            # Update layout
+            fig.update_layout(
+                title='Logistic Regression Decision Boundary',
+                xaxis_title='Feature 1',
+                yaxis_title='Probability',
+                showlegend=True
+            )
+
             plot_data = fig.to_json()
             json_obj = json.loads(plot_data)
+
+        
+            # Return the plot data in the JSON response
             return JsonResponse({'plot_data': json_obj})
 
         except Exception as e:
@@ -641,7 +669,6 @@ def logistic_regression(request):
 
     else:
         return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
-
     
     
     
