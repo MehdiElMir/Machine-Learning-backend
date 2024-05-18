@@ -12,7 +12,7 @@ import json
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
 import plotly.graph_objects as go
 from sklearn.datasets import make_moons
 from sklearn.svm import SVR
@@ -601,11 +601,47 @@ def decision_tree(request):
         json_obj = json.loads(plot_data)
 
         return JsonResponse({'plot_data': json_obj})    
-    
-    
-    
-    
-       
+
+
+def logistic_regression(request):
+    if request.method == 'POST':
+        try:
+            # Parse the request body
+            body_unicode = request.body.decode('utf-8')
+            body_data = json.loads(body_unicode)
+            dataset = body_data.get('dataset', [])
+            target = body_data.get('target', '')
+            df = pd.DataFrame(dataset)
+            
+            X = df.drop(columns=target)
+            # Convert categorical features to numeric using one-hot encoding
+            X = pd.get_dummies(X)
+            le = LabelEncoder()
+            y = le.fit_transform(df[target])
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
+            clf = linear_model.LogisticRegression(C=1e5)
+            clf.fit(X_train, y_train)
+            X_train_feature1 = X_train.iloc[:, 0].values.reshape(-1, 1)
+            X_test_feature1 = X_test.iloc[:, 0].values.reshape(-1, 1)
+            X_range = np.linspace(X_train_feature1.min(), X_train_feature1.max(), 300).reshape(-1, 1)
+            X_range_full = np.hstack([X_range] * X_train.shape[1])
+            y_range = clf.predict_proba(X_range_full)[:, 1]
+
+            fig = go.Figure([
+                go.Scatter(x=X_train.squeeze(), y=y_train, mode='markers', name='train'),
+                go.Scatter(x=X_test.squeeze(), y=y_test, mode='markers', name='test'),
+                go.Scatter(x=X_range_full.squeeze(), y=y_range, mode='lines', name='prediction', line=dict(color='blue'))
+            ])
+            plot_data = fig.to_json()
+            json_obj = json.loads(plot_data)
+            return JsonResponse({'plot_data': json_obj})
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    else:
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
     
     
     
