@@ -362,6 +362,8 @@ def smote(request):
 
         balanced_df = pd.concat([balanced_df, pd.Series(y_res_list, name = target)], axis=1)
         num_rows, num_columns = balanced_df.shape
+        missing_percentage = (balanced_df.isnull().sum() / balanced_df.shape[0] * 100).to_dict()  
+        total_missing_percentage = sum([True for idx,row in balanced_df.iterrows() if any(row.isnull())])
 
         json_str = balanced_df.to_json(orient='records')
         json_obj = json.loads(json_str)
@@ -369,6 +371,8 @@ def smote(request):
 
         return JsonResponse({'data': json_obj,
                              'num_rows': num_rows,
+                             'missing_percentage': missing_percentage,
+                            'total_missing_percentage': total_missing_percentage,
                              })
     
 def knn_classification(request):
@@ -531,12 +535,15 @@ def undersampling(request):
         balanced_df = pd.concat([balanced_df, pd.Series(y_res_list, name = target)], axis=1)
 
         num_rows, num_columns = balanced_df.shape
+        missing_percentage = (balanced_df.isnull().sum() / balanced_df.shape[0] * 100).to_dict()  
+        total_missing_percentage = sum([True for idx,row in balanced_df.iterrows() if any(row.isnull())])
 
         json_str = balanced_df.to_json(orient='records')
         json_obj = json.loads(json_str)
 
 
-        return JsonResponse({'data': json_obj,'num_rows': num_rows})  
+        return JsonResponse({'data': json_obj,'num_rows': num_rows,'missing_percentage': missing_percentage,
+                                'total_missing_percentage': total_missing_percentage})  
 
 def generate_value_counts(request):
     if request.method == 'POST':
