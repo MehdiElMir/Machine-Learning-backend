@@ -285,9 +285,10 @@ def cross_validation(request):
         dataset = body_data.get('dataset', [])
         features = body_data.get('features', [])
         target = body_data.get('target','')
+        N_FOLD = body_data.get('N_FOLD','')
         df = pd.DataFrame(dataset)
         
-        N_FOLD = 6
+         
 
         # Preprocess the data
         X = df.drop(columns=features)
