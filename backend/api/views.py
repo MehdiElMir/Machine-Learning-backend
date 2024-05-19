@@ -28,6 +28,8 @@ import plotly.express as px
 import numpy as np
 from sklearn.tree import DecisionTreeRegressor  
 from sklearn.preprocessing import LabelEncoder
+from sklearn.tree import DecisionTreeClassifier 
+
 
 def process_csv(request):
     uploaded_file = request.FILES['file']
@@ -174,8 +176,7 @@ def imputate_selected_column(request):
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
     
-#linear_regression
-#pip install -U kaleido  
+ 
 def linear_regression(request):
     if request.method == 'POST':
         try:
@@ -679,7 +680,52 @@ def logistic_regression(request):
         return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
     
     
+
+def decision_tree_visualisation(request):
+    
+    body_unicode = request.body.decode('utf-8')
+    body_data = json.loads(body_unicode)
+    dataset = body_data.get('dataset', [])
+    target = body_data.get('target', '')
+    criterion= body_data.get('criterion', '')
+    max_depth= body_data.get('max_depth', '')
     
     
+    df = pd.DataFrame(dataset)
+
+    x = df.drop(columns=target)
+    x = pd.get_dummies(x)
     
+    cn= df[target].unique()
     
+    y=df[target]
+
+    le = LabelEncoder()
+    y = le.fit_transform(y)
+    
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=40)
+
+    model = DecisionTreeClassifier(criterion= criterion,max_depth=max_depth)
+    model.fit(x_train, y_train)
+    
+    preds=model.predict(x_test) 
+    
+    fn= x.columns.tolist()
+    
+    plt.ioff()
+    
+    fig,axes=plt.subplots(nrows=1,ncols=1,figsize=(4,2),dpi=300)
+    tree.plot_tree(model,feature_names=fn,class_names=cn,filled=True)
+    
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+
+    encoded_image = base64.b64encode(buf.read()).decode('utf-8')
+
+    plt.close()
+
+    response_data = {'image': encoded_image}
+    return JsonResponse(response_data)
+
+

@@ -16,6 +16,7 @@ urlpatterns = [
     path('generate_value_counts/', views.generate_value_counts, name='generate_value_counts'),
     path('decision_tree/', views.decision_tree, name='decision_tree'),
     path('logistic_regression/', views.logistic_regression, name='logistic_regression'),
+    path('decision_tree_visualisation/', views.decision_tree_visualisation, name='decision_tree_visualisation'),
 
      
 
