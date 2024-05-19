@@ -661,7 +661,7 @@ def logistic_regression(request):
             # Update layout
             fig.update_layout(
                 title='Logistic Regression Decision Boundary',
-                xaxis_title='Feature 1',
+                xaxis_title= target,
                 yaxis_title='Probability',
                 showlegend=True
             )
