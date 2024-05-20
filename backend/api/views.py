@@ -736,18 +736,19 @@ def knn_mix(request):
     target = body_data.get('target','')
     column = body_data.get('column','')
     spotted_feature = body_data.get('spotted_feature','')
+    knn_neighbors = body_data.get('knn_neighbors','')
 
     df = pd.DataFrame(dataset)
     X = df[column].values.reshape(-1, 1)
     x_range = np.linspace(X.min(), X.max(), 100)
 
     # Model #1
-    knn_dist = KNeighborsRegressor(10, weights='distance')
+    knn_dist = KNeighborsRegressor(knn_neighbors, weights='distance')
     knn_dist.fit(X, df[target])
     y_dist = knn_dist.predict(x_range.reshape(-1, 1))
 
     # Model #2
-    knn_uni = KNeighborsRegressor(10, weights='uniform')
+    knn_uni = KNeighborsRegressor(knn_neighbors, weights='uniform')
     knn_uni.fit(X, df[target])
     y_uni = knn_uni.predict(x_range.reshape(-1, 1))
 #spotted_feature
