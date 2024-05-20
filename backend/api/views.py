@@ -661,7 +661,7 @@ def logistic_regression(request):
             # Update layout
             fig.update_layout(
                 title='Logistic Regression Decision Boundary',
-                xaxis_title='Feature 1',
+                xaxis_title= target,
                 yaxis_title='Probability',
                 showlegend=True
             )
@@ -728,4 +728,34 @@ def decision_tree_visualisation(request):
     response_data = {'image': encoded_image}
     return JsonResponse(response_data)
 
+def knn_mix(request):
+    body_unicode = request.body.decode('utf-8')
+    body_data = json.loads(body_unicode)
 
+    dataset = body_data.get('dataset', [])
+    target = body_data.get('target','')
+    column = body_data.get('column','')
+    spotted_feature = body_data.get('spotted_feature','')
+    knn_neighbors = body_data.get('knn_neighbors','')
+
+    df = pd.DataFrame(dataset)
+    X = df[column].values.reshape(-1, 1)
+    x_range = np.linspace(X.min(), X.max(), 100)
+
+    # Model #1
+    knn_dist = KNeighborsRegressor(knn_neighbors, weights='distance')
+    knn_dist.fit(X, df[target])
+    y_dist = knn_dist.predict(x_range.reshape(-1, 1))
+
+    # Model #2
+    knn_uni = KNeighborsRegressor(knn_neighbors, weights='uniform')
+    knn_uni.fit(X, df[target])
+    y_uni = knn_uni.predict(x_range.reshape(-1, 1))
+#spotted_feature
+    fig = px.scatter(df, x=column, y=target, color=spotted_feature, opacity=0.65)
+    fig.add_traces(go.Scatter(x=x_range, y=y_uni, name='Weights: Uniform'))
+    fig.add_traces(go.Scatter(x=x_range, y=y_dist, name='Weights: Distance'))
+    plot_data = fig.to_json()
+    json_obj = json.loads(plot_data)
+
+    return JsonResponse({'plot_data': json_obj})    

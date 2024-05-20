@@ -17,6 +17,7 @@ urlpatterns = [
     path('decision_tree/', views.decision_tree, name='decision_tree'),
     path('logistic_regression/', views.logistic_regression, name='logistic_regression'),
     path('decision_tree_visualisation/', views.decision_tree_visualisation, name='decision_tree_visualisation'),
+    path('knn_mix/',views.knn_mix,name = 'knn_mix'),
 
      
 
