@@ -244,42 +244,63 @@ def regression_linear_sckitlearn(request):
 
     return JsonResponse({'plot_data': json_obj})
 
-
 def regression_linear_3D(request):
     if request.method == 'POST':
         body_unicode = request.body.decode('utf-8')
         body_data = json.loads(body_unicode)
+        
         dataset = body_data.get('dataset', [])
-        selected_y= body_data.get('selected_y','')
-        selected_x1= body_data.get('selected_x1','')
-        selected_x2= body_data.get('selected_x2','') 
+        selected_y = body_data.get('selected_y', '')
+        selected_x1 = body_data.get('selected_x1', '')
+        selected_x2 = body_data.get('selected_x2', '') 
+        
+        if not dataset or not selected_y or not selected_x1 or not selected_x2:
+            return JsonResponse({'error': 'Invalid input data'}, status=400)
+        
         df = pd.DataFrame(dataset)
-        mesh_size = .02
+        mesh_size = 0.5  # Further reduce this to manage response size
         margin = 0
+        
         X = df[[selected_x1, selected_x2]]
         y = df[selected_y]
-        # Condition the model on sepal width and length, predict the petal width
-        model = SVR(C=1.)
-        model.fit(X, y)
-        # Create a mesh grid on which we will run our model
+        
+        # Train the model
+        model = SVR(C=1.0)
+        try:
+            model.fit(X.values, y)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+        
+        # Create a mesh grid
         x_min, x_max = X[selected_x1].min() - margin, X[selected_x1].max() + margin
         y_min, y_max = X[selected_x2].min() - margin, X[selected_x2].max() + margin
+        
         xrange = np.arange(x_min, x_max, mesh_size)
         yrange = np.arange(y_min, y_max, mesh_size)
+        
         xx, yy = np.meshgrid(xrange, yrange)
-        # Run model
-        pred = model.predict(np.c_[xx.ravel(), yy.ravel()])
-        pred = pred.reshape(xx.shape)
+        
+        # Run model predictions
+        try:
+            mesh_points = np.c_[xx.ravel(), yy.ravel()]
+            pred = model.predict(mesh_points)
+            pred = pred.reshape(xx.shape)
+        except MemoryError:
+            return JsonResponse({'error': 'Memory error during prediction'}, status=500)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+        
         # Generate the plot
         fig = px.scatter_3d(df, x=selected_x1, y=selected_x2, z=selected_y)
         fig.update_traces(marker=dict(size=5))
-        fig.add_traces(go.Surface(x=xrange, y=yrange, z=pred, name='pred_surface'))
+        fig.add_traces(go.Surface(x=xrange, y=yrange, z=pred, name='Prediction Surface'))
+        
         plot_data = fig.to_json()
-        json_obj = json.loads(plot_data) 
-                   
+        json_obj = json.loads(plot_data)
+        
+        return JsonResponse({'plot_data': json_obj})
 
-    return JsonResponse({'plot_data': json_obj})
-
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
 def cross_validation(request):
     if request.method == 'POST':
         body_unicode = request.body.decode('utf-8')
@@ -294,7 +315,8 @@ def cross_validation(request):
          
 
         # Preprocess the data
-        X = df.drop(columns=features)
+        # X = df.drop(columns=features)
+        X = df[features]
         categorical_features = X.select_dtypes(include=["object"]).columns
         X = pd.get_dummies(X, columns=categorical_features)
         y = df[target]
@@ -736,16 +758,16 @@ def knn_mix(request):
     target = body_data.get('target','')
     column = body_data.get('column','')
     spotted_feature = body_data.get('spotted_feature','')
-    knn_neighbors = body_data.get('knn_neighbors','')
+    n_neighbors = body_data.get('n_neighbors','')
     df = pd.DataFrame(dataset)
     X = df[column].values.reshape(-1, 1)
     x_range = np.linspace(X.min(), X.max(), 100)
     # Model #1
-    knn_dist = KNeighborsRegressor(knn_neighbors, weights='distance')
+    knn_dist = KNeighborsRegressor(n_neighbors, weights='distance')
     knn_dist.fit(X, df[target])
     y_dist = knn_dist.predict(x_range.reshape(-1, 1))
     # Model #2
-    knn_uni = KNeighborsRegressor(knn_neighbors, weights='uniform')
+    knn_uni = KNeighborsRegressor(n_neighbors, weights='uniform')
     knn_uni.fit(X, df[target])
     y_uni = knn_uni.predict(x_range.reshape(-1, 1))
 #spotted_feature
@@ -755,3 +777,46 @@ def knn_mix(request):
     plot_data = fig.to_json()
     json_obj = json.loads(plot_data)
     return JsonResponse({'plot_data': json_obj})    
+
+
+def multiple_linear_regression(request):
+    if request.method == 'POST':
+        try:
+            body_unicode = request.body.decode('utf-8')
+            body_data = json.loads(body_unicode)
+            dataset = body_data.get('dataset', [])
+            target = body_data.get('target','')
+            features = body_data.get('features', [])
+            df = pd.DataFrame(dataset)
+            # Separate features and target
+            X = df[features]
+            y = df[target]
+
+            # Handle categorical variables dynamically
+            X = pd.get_dummies(X, drop_first=True)
+
+            # Fit the linear regression model
+            model = LinearRegression()
+            model.fit(X, y)
+
+            # Determine positive and negative coefficients
+            colors = ['Positive' if c > 0 else 'Negative' for c in model.coef_]
+
+            # Generate the bar plot
+            fig = px.bar(
+                x=X.columns, y=model.coef_, color=colors,
+                color_discrete_sequence=['blue', 'red'],
+                labels=dict(x='Feature', y='Linear Coefficient'),
+                title=f'Weight of Each Feature for Predicting {target}'
+            )
+            
+            plot_data = fig.to_json()
+            json_obj = json.loads(plot_data)
+            return JsonResponse({'plot_data': json_obj})    
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    else:
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+   
+
