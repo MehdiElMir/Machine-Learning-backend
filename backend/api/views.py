@@ -6,10 +6,12 @@ import io
 import base64
 import matplotlib.pyplot as plt
 from django.http import JsonResponse
+from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 import json
 import numpy as np
+from sklearn.pipeline import Pipeline
 import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression, LogisticRegression
@@ -17,7 +19,7 @@ import plotly.graph_objects as go
 from sklearn.datasets import make_moons
 from sklearn.svm import SVR
 from sklearn.datasets import make_moons
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.linear_model import LassoCV
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import RandomOverSampler
@@ -444,35 +446,41 @@ def knn_regression(request):
         try:
             body_unicode = request.body.decode('utf-8')
             body_data = json.loads(body_unicode)
-            # Extraire les données et paramètres du corps de la requête JSON
             dataset = body_data.get('dataset', [])
             target = body_data.get('target', '')
             n_neighbors = body_data.get('n_neighbors', '')  # Nombre de voisins par défaut
-
             # Créer le DataFrame à partir du dataset
             df = pd.DataFrame(dataset)
-            
             # Vérifier la validité des données
             if not df.empty and target in df.columns:
                 # Séparer les caractéristiques (X) et la cible (y)
                 X = df.drop(columns=[target])
                 y = df[target].astype(float)  # Assurez-vous que la cible est de type float
-
+                # Identifier les colonnes numériques et catégoriques
+                numeric_features = X.select_dtypes(include=['int64', 'float64']).columns
+                categorical_features = X.select_dtypes(include=['object', 'category']).columns
+                # Créer des transformations pour les données numériques et catégoriques
+                numeric_transformer = 'passthrough'
+                categorical_transformer = OneHotEncoder(handle_unknown='ignore')
+                # Créer un préprocesseur pour transformer les colonnes
+                preprocessor = ColumnTransformer(
+                    transformers=[
+                        ('num', numeric_transformer, numeric_features),
+                        ('cat', categorical_transformer, categorical_features)
+                    ])
+                # Créer un pipeline avec le préprocesseur et le modèle KNN
+                model = Pipeline(steps=[
+                    ('preprocessor', preprocessor),
+                    ('regressor', KNeighborsRegressor(n_neighbors=n_neighbors))
+                ])
                 # Division des données en ensembles d'entraînement et de test
                 X_train, X_test, y_train, y_test = train_test_split(
                     X, y, test_size=0.25, random_state=0
                 )
-
-                # Initialiser et entraîner le modèle de régression KNN
-                clf = KNeighborsRegressor(n_neighbors=n_neighbors)
-                clf.fit(X_train, y_train)
-
+                # Entraîner le modèle de régression KNN
+                model.fit(X_train, y_train)
                 # Prédire les valeurs sur l'ensemble de test
-                y_pred = clf.predict(X_test)
-
-                # Récupérer les noms des features (colonnes de X_test)
-                feature_names = X_test.columns.tolist()
-
+                y_pred = model.predict(X_test)
                 # Créer un DataFrame avec les données de test et les prédictions
                 df_pred = pd.DataFrame({
                     'feature_1': X_test.iloc[:, 0],
@@ -480,7 +488,6 @@ def knn_regression(request):
                     'true_target': y_test,
                     'predicted_target': y_pred
                 })
-
                 # Créer un scatter plot avec Plotly Express en utilisant les noms des features
                 fig = px.scatter(
                     df_pred, x='feature_1', y='feature_2',
@@ -488,30 +495,24 @@ def knn_regression(request):
                     labels={'color': 'predicted target'},
                     title='KNN Regression Prediction'
                 )
-
                 fig.update_traces(marker_size=12, marker_line_width=1.5)
                 fig.update_layout(legend_orientation='h')
-
+                # Récupérer les noms des features après transformation
+                feature_names = model.named_steps['preprocessor'].get_feature_names_out()
                 # Renommer les axes x et y avec les noms des features
                 fig.update_xaxes(title_text=feature_names[0])
                 fig.update_yaxes(title_text=feature_names[1])
-
                 # Conversion du graphique en format JSON
                 plot_data = fig.to_json()
                 json_obj = json.loads(plot_data)
-
                 # Retourner les données du graphique dans la réponse JSON
                 return JsonResponse({'plot_data': json_obj})
-
             else:
                 return JsonResponse({'error': 'Le dataset est vide ou la cible spécifiée est incorrecte.'}, status=400)
-
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
-
     else:
         return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
-    
 
 
 def undersampling(request):
@@ -731,22 +732,18 @@ def decision_tree_visualisation(request):
 def knn_mix(request):
     body_unicode = request.body.decode('utf-8')
     body_data = json.loads(body_unicode)
-
     dataset = body_data.get('dataset', [])
     target = body_data.get('target','')
     column = body_data.get('column','')
     spotted_feature = body_data.get('spotted_feature','')
     knn_neighbors = body_data.get('knn_neighbors','')
-
     df = pd.DataFrame(dataset)
     X = df[column].values.reshape(-1, 1)
     x_range = np.linspace(X.min(), X.max(), 100)
-
     # Model #1
     knn_dist = KNeighborsRegressor(knn_neighbors, weights='distance')
     knn_dist.fit(X, df[target])
     y_dist = knn_dist.predict(x_range.reshape(-1, 1))
-
     # Model #2
     knn_uni = KNeighborsRegressor(knn_neighbors, weights='uniform')
     knn_uni.fit(X, df[target])
@@ -757,5 +754,4 @@ def knn_mix(request):
     fig.add_traces(go.Scatter(x=x_range, y=y_dist, name='Weights: Distance'))
     plot_data = fig.to_json()
     json_obj = json.loads(plot_data)
-
     return JsonResponse({'plot_data': json_obj})    
